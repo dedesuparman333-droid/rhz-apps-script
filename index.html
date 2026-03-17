@@ -1,0 +1,825 @@
+<!DOCTYPE html>
+<html lang="id" class="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Rahaza Farm - Management System</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        metallic: {
+                            100: '#d5e8df',
+                            300: '#83b8a1',
+                            500: '#348062', 
+                            700: '#245a44',
+                            900: '#153326',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: #f1f1f1; }
+        .dark ::-webkit-scrollbar-track { background: #1f2937; }
+        ::-webkit-scrollbar-thumb { background: #348062; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #245a44; }
+        
+        /* OPTIMASI: Nonaktifkan blur di mobile karena sangat berat, biarkan di desktop */
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.95);
+        }
+        @media (min-width: 768px) {
+            .glass-panel {
+                backdrop-filter: blur(8px);
+                -webkit-backdrop-filter: blur(8px);
+            }
+        }
+        .dark .glass-panel { background: rgba(31, 41, 55, 0.95); }
+        
+        .hero-gradient {
+            background: linear-gradient(135deg, #348062 0%, #153326 100%);
+        }
+
+        /* OPTIMASI: Hardware acceleration untuk scrolling yang lebih smooth di mobile */
+        .smooth-scroll-container {
+            -webkit-overflow-scrolling: touch;
+            overscroll-behavior-y: contain;
+            will-change: transform;
+            transform: translateZ(0); /* Memaksa render menggunakan GPU */
+        }
+    </style>
+</head>
+<body class="bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200 transition-colors duration-200 font-sans">
+
+    <div id="loader" class="fixed inset-0 bg-black bg-opacity-50 z-[60] hidden flex justify-center items-center">
+        <div class="animate-spin rounded-full h-16 w-16 border-t-4 border-b-4 border-metallic-500"></div>
+    </div>
+
+    <div id="toast" class="fixed top-5 right-5 z-[70] hidden transition-opacity duration-300 transform-gpu">
+        <div id="toastContent" class="bg-metallic-500 text-white px-6 py-3 rounded shadow-lg flex items-center gap-3">
+            <i class="fas fa-info-circle"></i>
+            <span id="toastMsg">Pesan Notifikasi</span>
+        </div>
+    </div>
+
+    <!-- VIEW: LOGIN -->
+    <div id="viewLogin" class="min-h-screen flex items-center justify-center p-4">
+        <div class="glass-panel p-8 rounded-xl shadow-2xl w-full max-w-md border border-gray-200 dark:border-gray-700">
+            <div class="text-center mb-8">
+                <div class="inline-block p-4 rounded-full bg-metallic-100 text-metallic-700 mb-4">
+                    <i class="fas fa-kiwi-bird text-4xl"></i>
+                </div>
+                <h1 class="text-2xl font-bold text-metallic-700 dark:text-metallic-300">Rahaza Farm</h1>
+                <p class="text-sm text-gray-500 dark:text-gray-400">Smart Poultry Management</p>
+            </div>
+            
+            <form id="loginForm" onsubmit="handleLogin(event)">
+                <div class="mb-4">
+                    <label class="block text-sm font-medium mb-1">Username</label>
+                    <input type="text" id="username" class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-metallic-500 dark:bg-gray-800 dark:border-gray-600 outline-none" required placeholder="admin">
+                </div>
+                <div class="mb-6">
+                    <label class="block text-sm font-medium mb-1">Password</label>
+                    <input type="password" id="password" class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-metallic-500 dark:bg-gray-800 dark:border-gray-600 outline-none" required placeholder="••••••••">
+                </div>
+                <button type="submit" class="w-full bg-metallic-500 hover:bg-metallic-700 text-white font-bold py-2 px-4 rounded-lg transition duration-200 shadow-lg">Masuk</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- VIEW: MAIN APP -->
+    <div id="viewApp" class="hidden h-screen flex overflow-hidden">
+        
+        <!-- SIDEBAR -->
+        <aside id="sidebar" class="bg-metallic-900 text-white w-64 flex-shrink-0 flex flex-col transition-transform duration-300 absolute md:relative z-40 h-full -translate-x-full md:translate-x-0 shadow-2xl md:shadow-none">
+            <div class="h-16 flex items-center justify-between px-4 bg-metallic-900 border-b border-metallic-700">
+                <div class="flex items-center gap-2 font-bold text-lg"><i class="fas fa-kiwi-bird text-metallic-300"></i> Rahaza Farm</div>
+                <button onclick="toggleSidebar()" class="md:hidden text-gray-300 p-2"><i class="fas fa-times"></i></button>
+            </div>
+            <nav class="flex-1 overflow-y-auto py-4 smooth-scroll-container">
+                <ul class="space-y-1 px-2">
+                    <li><a href="#" onclick="navigate('beranda')" class="nav-btn block px-4 py-3 rounded-lg hover:bg-metallic-700 transition" data-target="beranda"><i class="fas fa-home w-6"></i> Beranda</a></li>
+                    <li class="pt-4 pb-2 px-4 text-xs font-semibold text-metallic-300 uppercase tracking-wider">Produksi</li>
+                    <li><a href="#" onclick="navigate('broiler')" class="nav-btn block px-4 py-3 rounded-lg hover:bg-metallic-700 transition" data-target="broiler"><i class="fas fa-drumstick-bite w-6"></i> Broiler</a></li>
+                    <li><a href="#" onclick="navigate('petelur')" class="nav-btn block px-4 py-3 rounded-lg hover:bg-metallic-700 transition" data-target="petelur"><i class="fas fa-egg w-6"></i> Petelur</a></li>
+                    <li><a href="#" onclick="navigate('kampung')" class="nav-btn block px-4 py-3 rounded-lg hover:bg-metallic-700 transition" data-target="kampung"><i class="fas fa-crow w-6"></i> Kampung</a></li>
+                </ul>
+            </nav>
+            <div class="p-4 border-t border-metallic-700 text-xs">
+                <div id="displayUsername" class="font-bold text-sm">User</div>
+                <button onclick="handleLogout()" class="text-red-400 mt-2 hover:underline p-1 -ml-1">Logout</button>
+            </div>
+        </aside>
+
+        <!-- MAIN CONTENT -->
+        <main class="flex-1 flex flex-col h-screen overflow-hidden">
+            <header class="h-16 glass-panel border-b border-gray-200 dark:border-gray-700 flex items-center justify-between px-4 z-10 flex-shrink-0">
+                <div class="flex items-center gap-4">
+                    <button onclick="toggleSidebar()" class="md:hidden p-2 -ml-2"><i class="fas fa-bars text-lg"></i></button>
+                    <h2 id="pageTitle" class="text-xl font-bold text-metallic-700 dark:text-metallic-300">Beranda</h2>
+                </div>
+                <button onclick="toggleTheme()" class="text-gray-600 dark:text-gray-300 p-2"><i id="themeIcon" class="fas fa-moon text-lg"></i></button>
+            </header>
+
+            <!-- OPTIMASI: Class smooth-scroll ditambahkan disini -->
+            <div class="flex-1 overflow-y-auto p-4 md:p-6 pb-24 smooth-scroll-container bg-gray-100 dark:bg-gray-900">
+                
+                <!-- PAGE: BERANDA -->
+                <div id="page-beranda" class="page-content space-y-8 animate-fadeIn">
+                    <div class="hero-gradient text-white rounded-2xl p-6 md:p-8 shadow-xl relative overflow-hidden">
+                        <div class="relative z-10 max-w-2xl">
+                            <h1 class="text-3xl md:text-4xl font-black mb-4">Selamat Datang di Rahaza Farm</h1>
+                            <p class="text-base md:text-lg opacity-90 leading-relaxed">
+                                Dedikasi kami adalah menyediakan solusi peternakan modern yang cerdas, efisien, dan berkelanjutan. Melalui teknologi, kami memastikan kualitas terbaik dari setiap rantai produksi.
+                            </p>
+                        </div>
+                        <i class="fas fa-kiwi-bird absolute -bottom-10 -right-10 text-[150px] md:text-[200px] opacity-10"></i>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mt-8">
+                        <div class="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700">
+                            <div class="flex items-center gap-4 mb-4">
+                                <div class="w-12 h-12 bg-metallic-100 text-metallic-700 rounded-full flex items-center justify-center text-xl shrink-0">
+                                    <i class="fas fa-info-circle"></i>
+                                </div>
+                                <h3 class="text-xl font-bold">Tentang Rahaza Farm</h3>
+                            </div>
+                            <p class="text-gray-600 dark:text-gray-400 leading-relaxed text-sm md:text-base">
+                                Rahaza Farm adalah pusat peternakan unggas terpadu yang berfokus pada pengembangan ayam broiler, petelur, dan kampung. Kami mengintegrasikan manajemen data real-time untuk memantau kesehatan populasi dan efisiensi pakan guna menghasilkan produk berkualitas tinggi untuk masyarakat.
+                            </p>
+                        </div>
+
+                        <div class="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700">
+                            <div class="flex items-center gap-4 mb-4">
+                                <div class="w-12 h-12 bg-blue-100 text-blue-700 rounded-full flex items-center justify-center text-xl shrink-0">
+                                    <i class="fas fa-user-tie"></i>
+                                </div>
+                                <h3 class="text-xl font-bold">Profil Founder</h3>
+                            </div>
+                            <div class="flex items-start gap-4">
+                                <div>
+                                    <h4 class="text-lg font-black text-metallic-700 dark:text-metallic-300">Dede Suparman</h4>
+                                    <p class="text-sm text-gray-500 mb-2 font-semibold">Founder & CEO Rahaza Farm</p>
+                                    <p class="text-gray-600 dark:text-gray-400 leading-relaxed italic text-sm md:text-base">
+                                        "Membangun masa depan pangan nasional dimulai dari tata kelola peternakan yang transparan dan berbasis data. Rahaza Farm hadir sebagai bukti bahwa tradisi dan teknologi dapat berjalan beriringan."
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- PAGE: BROILER -->
+                <div id="page-broiler" class="page-content hidden space-y-6">
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6">
+                        <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-5 md:p-6 border-l-4 border-blue-500">
+                            <p class="text-[10px] md:text-xs text-gray-500 font-bold uppercase tracking-wider">Populasi Aktif</p>
+                            <h3 class="text-2xl md:text-3xl font-black mt-1" id="dash-b-pop">0 Ekor</h3>
+                        </div>
+                        <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-5 md:p-6 border-l-4 border-red-500">
+                            <p class="text-[10px] md:text-xs text-gray-500 font-bold uppercase tracking-wider">Total Biaya Keluar</p>
+                            <h3 class="text-2xl md:text-3xl font-black mt-1 text-red-500" id="dash-b-cost">Rp 0</h3>
+                        </div>
+                        <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-5 md:p-6 border-l-4 border-green-500">
+                            <p class="text-[10px] md:text-xs text-gray-500 font-bold uppercase tracking-wider">HPP / Ekor (Saat Ini)</p>
+                            <h3 class="text-2xl md:text-3xl font-black mt-1 text-green-500" id="dash-b-hpp">Rp 0</h3>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
+                        <button onclick="openBroilerModal('modal')" class="bg-blue-600 text-white p-3 md:p-4 rounded-xl shadow hover:bg-blue-700 active:scale-95 transition-transform flex flex-col items-center gap-2">
+                            <i class="fas fa-wallet text-xl md:text-2xl"></i>
+                            <span class="text-[9px] md:text-[10px] font-bold uppercase text-center">Input Modal Awal</span>
+                        </button>
+                        <button onclick="openBroilerModal('operasional')" class="bg-orange-500 text-white p-3 md:p-4 rounded-xl shadow hover:bg-orange-600 active:scale-95 transition-transform flex flex-col items-center gap-2">
+                            <i class="fas fa-gas-pump text-xl md:text-2xl"></i>
+                            <span class="text-[9px] md:text-[10px] font-bold uppercase text-center">Biaya Harian</span>
+                        </button>
+                        <button onclick="openBroilerModal('kematian')" class="bg-red-500 text-white p-3 md:p-4 rounded-xl shadow hover:bg-red-600 active:scale-95 transition-transform flex flex-col items-center gap-2">
+                            <i class="fas fa-skull-crossbones text-xl md:text-2xl"></i>
+                            <span class="text-[9px] md:text-[10px] font-bold uppercase text-center">Input Kematian</span>
+                        </button>
+                        <button onclick="openBroilerModal('panen')" class="bg-green-600 text-white p-3 md:p-4 rounded-xl shadow hover:bg-green-700 active:scale-95 transition-transform flex flex-col items-center gap-2">
+                            <i class="fas fa-hand-holding-usd text-xl md:text-2xl"></i>
+                            <span class="text-[9px] md:text-[10px] font-bold uppercase text-center">Input Penjualan</span>
+                        </button>
+                    </div>
+
+                    <!-- Tabel dengan smooth-scroll container untuk HP -->
+                    <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm overflow-hidden border border-gray-100 dark:border-gray-700">
+                        <div class="p-4 border-b dark:border-gray-700 flex justify-between items-center bg-gray-50 dark:bg-gray-900">
+                            <h3 class="font-bold text-gray-600 dark:text-gray-300 uppercase text-xs tracking-widest">Riwayat (50 Data Terakhir)</h3>
+                        </div>
+                        <div class="overflow-x-auto smooth-scroll-container">
+                            <table class="w-full text-left whitespace-nowrap">
+                                <thead class="bg-gray-100 dark:bg-gray-700 text-[10px] uppercase font-bold text-gray-500">
+                                    <tr>
+                                        <th class="p-3 md:p-4">Tanggal</th>
+                                        <th class="p-3 md:p-4">Jenis</th>
+                                        <th class="p-3 md:p-4">Populasi</th>
+                                        <th class="p-3 md:p-4">Mati</th>
+                                        <th class="p-3 md:p-4">Biaya</th>
+                                        <th class="p-3 md:p-4 text-green-600">HPP/Ekor</th>
+                                        <th class="p-3 md:p-4">Ket</th>
+                                        <th class="p-3 md:p-4 text-center">Aksi</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="broilerTableBody" class="divide-y dark:divide-gray-700 text-sm">
+                                    <tr><td colspan="8" class="p-8 text-center text-gray-400">Memuat data...</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- PAGE: PETELUR -->
+                <div id="page-petelur" class="page-content hidden space-y-6">
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6">
+                        <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-5 md:p-6 border-l-4 border-yellow-500">
+                            <p class="text-[10px] md:text-xs text-gray-500 font-bold uppercase tracking-wider">Populasi Aktif</p>
+                            <h3 class="text-2xl md:text-3xl font-black mt-1" id="dash-p-pop">0 Ekor</h3>
+                        </div>
+                        <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-5 md:p-6 border-l-4 border-orange-500">
+                            <p class="text-[10px] md:text-xs text-gray-500 font-bold uppercase tracking-wider">Total Produksi Telur</p>
+                            <h3 class="text-2xl md:text-3xl font-black mt-1 text-orange-500" id="dash-p-prod">0 Butir</h3>
+                        </div>
+                        <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-5 md:p-6 border-l-4 border-red-500">
+                            <p class="text-[10px] md:text-xs text-gray-500 font-bold uppercase tracking-wider">Total Biaya Keluar</p>
+                            <h3 class="text-2xl md:text-3xl font-black mt-1 text-red-500" id="dash-p-cost">Rp 0</h3>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
+                        <button onclick="openPetelurModal('modal')" class="bg-yellow-600 text-white p-3 md:p-4 rounded-xl shadow hover:bg-yellow-700 active:scale-95 transition-transform flex flex-col items-center gap-2">
+                            <i class="fas fa-box-open text-xl md:text-2xl"></i>
+                            <span class="text-[9px] md:text-[10px] font-bold uppercase text-center">Input Pullet</span>
+                        </button>
+                        <button onclick="openPetelurModal('operasional')" class="bg-orange-500 text-white p-3 md:p-4 rounded-xl shadow hover:bg-orange-600 active:scale-95 transition-transform flex flex-col items-center gap-2">
+                            <i class="fas fa-seedling text-xl md:text-2xl"></i>
+                            <span class="text-[9px] md:text-[10px] font-bold uppercase text-center">Biaya Pakan</span>
+                        </button>
+                        <button onclick="openPetelurModal('produksi')" class="bg-green-600 text-white p-3 md:p-4 rounded-xl shadow hover:bg-green-700 active:scale-95 transition-transform flex flex-col items-center gap-2">
+                            <i class="fas fa-egg text-xl md:text-2xl"></i>
+                            <span class="text-[9px] md:text-[10px] font-bold uppercase text-center">Input Produksi</span>
+                        </button>
+                        <button onclick="openPetelurModal('kematian')" class="bg-red-500 text-white p-3 md:p-4 rounded-xl shadow hover:bg-red-600 active:scale-95 transition-transform flex flex-col items-center gap-2">
+                            <i class="fas fa-skull-crossbones text-xl md:text-2xl"></i>
+                            <span class="text-[9px] md:text-[10px] font-bold uppercase text-center">Afkir / Mati</span>
+                        </button>
+                    </div>
+
+                    <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm overflow-hidden border border-gray-100 dark:border-gray-700">
+                        <div class="p-4 border-b dark:border-gray-700 flex justify-between items-center bg-gray-50 dark:bg-gray-900">
+                            <h3 class="font-bold text-gray-600 dark:text-gray-300 uppercase text-xs tracking-widest">Riwayat (50 Data Terakhir)</h3>
+                        </div>
+                        <div class="overflow-x-auto smooth-scroll-container">
+                            <table class="w-full text-left whitespace-nowrap">
+                                <thead class="bg-gray-100 dark:bg-gray-700 text-[10px] uppercase font-bold text-gray-500">
+                                    <tr>
+                                        <th class="p-3 md:p-4">Tanggal</th>
+                                        <th class="p-3 md:p-4">Jenis</th>
+                                        <th class="p-3 md:p-4">Populasi</th>
+                                        <th class="p-3 md:p-4 text-orange-600">Telur (Btr)</th>
+                                        <th class="p-3 md:p-4">Mati/Afkir</th>
+                                        <th class="p-3 md:p-4">Biaya</th>
+                                        <th class="p-3 md:p-4">Ket</th>
+                                        <th class="p-3 md:p-4 text-center">Aksi</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="petelurTableBody" class="divide-y dark:divide-gray-700 text-sm">
+                                    <tr><td colspan="8" class="p-8 text-center text-gray-400">Memuat data...</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- PAGE: KAMPUNG -->
+                <div id="page-kampung" class="page-content hidden space-y-6">
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6">
+                        <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-5 md:p-6 border-l-4 border-blue-500">
+                            <p class="text-[10px] md:text-xs text-gray-500 font-bold uppercase tracking-wider">Populasi Aktif</p>
+                            <h3 class="text-2xl md:text-3xl font-black mt-1" id="dash-k-pop">0 Ekor</h3>
+                        </div>
+                        <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-5 md:p-6 border-l-4 border-red-500">
+                            <p class="text-[10px] md:text-xs text-gray-500 font-bold uppercase tracking-wider">Total Biaya Keluar</p>
+                            <h3 class="text-2xl md:text-3xl font-black mt-1 text-red-500" id="dash-k-cost">Rp 0</h3>
+                        </div>
+                        <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-5 md:p-6 border-l-4 border-green-500">
+                            <p class="text-[10px] md:text-xs text-gray-500 font-bold uppercase tracking-wider">HPP / Ekor (Saat Ini)</p>
+                            <h3 class="text-2xl md:text-3xl font-black mt-1 text-green-500" id="dash-k-hpp">Rp 0</h3>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
+                        <button onclick="openKampungModal('modal')" class="bg-blue-600 text-white p-3 md:p-4 rounded-xl shadow hover:bg-blue-700 active:scale-95 transition-transform flex flex-col items-center gap-2">
+                            <i class="fas fa-wallet text-xl md:text-2xl"></i>
+                            <span class="text-[9px] md:text-[10px] font-bold uppercase text-center">Input DOC Kampung</span>
+                        </button>
+                        <button onclick="openKampungModal('operasional')" class="bg-orange-500 text-white p-3 md:p-4 rounded-xl shadow hover:bg-orange-600 active:scale-95 transition-transform flex flex-col items-center gap-2">
+                            <i class="fas fa-gas-pump text-xl md:text-2xl"></i>
+                            <span class="text-[9px] md:text-[10px] font-bold uppercase text-center">Biaya Harian</span>
+                        </button>
+                        <button onclick="openKampungModal('kematian')" class="bg-red-500 text-white p-3 md:p-4 rounded-xl shadow hover:bg-red-600 active:scale-95 transition-transform flex flex-col items-center gap-2">
+                            <i class="fas fa-skull-crossbones text-xl md:text-2xl"></i>
+                            <span class="text-[9px] md:text-[10px] font-bold uppercase text-center">Input Kematian</span>
+                        </button>
+                        <button onclick="openKampungModal('panen')" class="bg-green-600 text-white p-3 md:p-4 rounded-xl shadow hover:bg-green-700 active:scale-95 transition-transform flex flex-col items-center gap-2">
+                            <i class="fas fa-hand-holding-usd text-xl md:text-2xl"></i>
+                            <span class="text-[9px] md:text-[10px] font-bold uppercase text-center">Input Penjualan</span>
+                        </button>
+                    </div>
+
+                    <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm overflow-hidden border border-gray-100 dark:border-gray-700">
+                        <div class="p-4 border-b dark:border-gray-700 flex justify-between items-center bg-gray-50 dark:bg-gray-900">
+                            <h3 class="font-bold text-gray-600 dark:text-gray-300 uppercase text-xs tracking-widest">Riwayat (50 Data Terakhir)</h3>
+                        </div>
+                        <div class="overflow-x-auto smooth-scroll-container">
+                            <table class="w-full text-left whitespace-nowrap">
+                                <thead class="bg-gray-100 dark:bg-gray-700 text-[10px] uppercase font-bold text-gray-500">
+                                    <tr>
+                                        <th class="p-3 md:p-4">Tanggal</th>
+                                        <th class="p-3 md:p-4">Jenis</th>
+                                        <th class="p-3 md:p-4">Populasi</th>
+                                        <th class="p-3 md:p-4">Mati</th>
+                                        <th class="p-3 md:p-4">Biaya</th>
+                                        <th class="p-3 md:p-4 text-green-600">HPP/Ekor</th>
+                                        <th class="p-3 md:p-4">Ket</th>
+                                        <th class="p-3 md:p-4 text-center">Aksi</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="kampungTableBody" class="divide-y dark:divide-gray-700 text-sm">
+                                    <tr><td colspan="8" class="p-8 text-center text-gray-400">Memuat data...</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </main>
+    </div>
+
+    <!-- MODAL -->
+    <div id="appModal" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 hidden flex justify-center items-center p-4">
+        <div class="bg-white dark:bg-gray-800 rounded-2xl w-full max-w-md shadow-2xl overflow-hidden transform-gpu">
+            <div class="p-4 border-b dark:border-gray-700 flex justify-between items-center bg-gray-50 dark:bg-gray-900">
+                <h3 id="modalTitle" class="font-bold uppercase text-xs tracking-wider">Input Data</h3>
+                <button onclick="closeModal()" class="text-gray-400 hover:text-red-500 p-2 -mr-2"><i class="fas fa-times"></i></button>
+            </div>
+            <!-- Menggunakan smooth-scroll pada isi modal jika formnya panjang -->
+            <div class="max-h-[80vh] overflow-y-auto smooth-scroll-container">
+                <form id="appForm" onsubmit="handleFormSubmit(event)" class="p-6 space-y-4">
+                    <input type="hidden" name="type" id="formType">
+                    <div id="dynamicFields" class="space-y-4"></div>
+                    <div id="hppPreview" class="hidden p-3 bg-green-50 dark:bg-green-900/20 rounded-lg border border-green-200 dark:border-green-800">
+                        <p class="text-[10px] text-green-600 uppercase font-bold">Estimasi HPP/Ekor</p>
+                        <p id="hppValue" class="text-lg font-black text-green-700 dark:text-green-400">Rp 0</p>
+                    </div>
+                    <div class="pt-4 flex justify-end gap-3 sticky bottom-0 bg-white dark:bg-gray-800 mt-4">
+                        <button type="button" onclick="closeModal()" class="px-4 py-2 text-sm text-gray-500 hover:bg-gray-100 rounded-lg">Batal</button>
+                        <button type="submit" class="px-6 py-2 text-sm bg-metallic-500 text-white rounded-lg hover:bg-metallic-700 shadow-lg font-bold">Simpan</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // INITIAL STATE
+        let currentUser = null;
+        let activeModule = 'beranda';
+        let broilerSummary = { totalCost: 0, currentPop: 0, totalMati: 0 };
+        let petelurSummary = { totalCost: 0, currentPop: 0 };
+        let kampungSummary = { totalCost: 0, currentPop: 0 };
+
+        const api = {
+            run: async (fn, args = []) => {
+                if (typeof google !== 'undefined' && google.script && google.script.run) {
+                    return new Promise((res, rej) => {
+                        google.script.run.withSuccessHandler(res).withFailureHandler(rej)[fn](...args);
+                    });
+                }
+                const mock = {
+                    doLogin: JSON.stringify({ success: true, user: {id: 'USR-1', username: 'admin', role: 'admin'} }),
+                    getDashboardDataExtended: JSON.stringify({ 
+                        broiler: { populasi: 0, cost: 0, hpp: 0 },
+                        petelur: { populasi: 0, cost: 0, produksi: 0 },
+                        kampung: { populasi: 0, cost: 0, hpp: 0 }
+                    }),
+                    getBroilerExtended: JSON.stringify([]),
+                    getPetelurExtended: JSON.stringify([]),
+                    getKampungExtended: JSON.stringify([])
+                };
+                return mock[fn] || JSON.stringify({ success: true });
+            }
+        };
+
+        async function handleLogin(e) {
+            e.preventDefault();
+            showLoader();
+            try {
+                const resRaw = await api.run('doLogin', [document.getElementById('username').value, document.getElementById('password').value]);
+                const res = JSON.parse(resRaw);
+                hideLoader();
+                if(res.success) {
+                    currentUser = res.user;
+                    document.getElementById('viewLogin').classList.add('hidden');
+                    document.getElementById('viewApp').classList.remove('hidden');
+                    document.getElementById('displayUsername').innerText = currentUser.username;
+                    navigate('beranda');
+                } else showToast(res.message || "Gagal Login", 'error');
+            } catch(err) {
+                hideLoader();
+                showToast("Terjadi kesalahan sistem", "error");
+            }
+        }
+
+        function navigate(page) {
+            activeModule = page;
+            document.querySelectorAll('.page-content').forEach(p => p.classList.add('hidden'));
+            document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('bg-metallic-700'));
+            
+            const btn = document.querySelector(`.nav-btn[data-target="${page}"]`);
+            if(btn) btn.classList.add('bg-metallic-700');
+            
+            document.getElementById('pageTitle').innerText = page.charAt(0).toUpperCase() + page.slice(1);
+            
+            if(page === 'beranda') {
+                document.getElementById('page-beranda').classList.remove('hidden');
+            } else if(page === 'broiler') {
+                document.getElementById('page-broiler').classList.remove('hidden');
+                refreshBroilerDashboard();
+                renderBroilerData();
+            } else if(page === 'petelur') {
+                document.getElementById('page-petelur').classList.remove('hidden');
+                refreshPetelurDashboard();
+                renderPetelurData();
+            } else if(page === 'kampung') {
+                document.getElementById('page-kampung').classList.remove('hidden');
+                refreshKampungDashboard();
+                renderKampungData();
+            }
+            if(window.innerWidth < 768) toggleSidebar();
+        }
+
+        // ================= BROILER FUNCTIONS =================
+        async function refreshBroilerDashboard() {
+            try {
+                const resRaw = await api.run('getDashboardDataExtended', [currentUser.id, currentUser.role]);
+                const res = JSON.parse(resRaw);
+                const bData = res && res.broiler ? res.broiler : { populasi: 0, cost: 0, hpp: 0 };
+
+                document.getElementById('dash-b-pop').innerText = (bData.populasi || 0).toLocaleString() + " Ekor";
+                document.getElementById('dash-b-cost').innerText = "Rp " + (bData.cost || 0).toLocaleString();
+                document.getElementById('dash-b-hpp').innerText = "Rp " + (bData.hpp || 0).toLocaleString();
+                
+                broilerSummary.currentPop = bData.populasi || 0;
+                broilerSummary.totalCost = bData.cost || 0;
+            } catch(e) { console.error("Dash Error:", e); }
+        }
+
+        async function renderBroilerData() {
+            showLoader();
+            try {
+                const raw = await api.run('getBroilerExtended', [currentUser.id, currentUser.role]);
+                const data = JSON.parse(raw);
+                const body = document.getElementById('broilerTableBody');
+                
+                if(!data || data.length === 0) {
+                    body.innerHTML = '<tr><td colspan="8" class="p-8 text-center text-gray-400 italic font-light">Belum ada transaksi tercatat</td></tr>';
+                } else {
+                    // OPTIMASI LAZY LOADING DASAR: Batasi hanya me-render 50 data terbaru agar DOM tidak berat
+                    const displayData = data.slice(0, 50);
+                    
+                    body.innerHTML = displayData.map(row => {
+                        const costValue = Number(row.biaya) || 0;
+                        return `
+                            <tr class="hover:bg-gray-50 dark:hover:bg-gray-800 transition">
+                                <td class="p-3 md:p-4 font-mono text-xs opacity-70">${row.tanggal}</td>
+                                <td class="p-3 md:p-4"><span class="px-2 md:px-3 py-1 rounded-full text-[9px] font-black tracking-tighter ${getBadgeColor(row.jenis)}">${row.jenis}</span></td>
+                                <td class="p-3 md:p-4 font-semibold">${row.populasi || '-'}</td>
+                                <td class="p-3 md:p-4 text-red-500 font-bold">${row.mati || '-'}</td>
+                                <td class="p-3 md:p-4 text-gray-600 dark:text-gray-300">Rp ${(costValue).toLocaleString()}</td>
+                                <td class="p-3 md:p-4 font-black text-green-600">Rp ${(row.hpp_saat_ini || 0).toLocaleString()}</td>
+                                <td class="p-3 md:p-4 italic text-[10px] text-gray-400 truncate max-w-[100px] md:max-w-[150px]">${row.keterangan || '-'}</td>
+                                <td class="p-3 md:p-4 text-center">
+                                    <button onclick="deleteData('broiler','${row.id}')" class="text-gray-300 hover:text-red-500 p-2"><i class="fas fa-trash-alt"></i></button>
+                                </td>
+                            </tr>
+                        `;
+                    }).join('');
+                }
+            } catch(e) { console.error("Table Error:", e); }
+            hideLoader();
+        }
+
+        function openBroilerModal(subType) {
+            const fields = document.getElementById('dynamicFields');
+            const title = document.getElementById('modalTitle');
+            const preview = document.getElementById('hppPreview');
+            document.getElementById('formType').value = subType;
+            fields.innerHTML = '';
+            preview.classList.add('hidden');
+
+            const dateField = `<div><label class="block text-[10px] font-bold text-gray-400 mb-1">TANGGAL TRANSAKSI</label><input type="date" name="tanggal" required class="w-full border p-3 rounded-lg dark:bg-gray-700 outline-none focus:ring-1 focus:ring-metallic-500" value="${new Date().toISOString().split('T')[0]}"></div>`;
+
+            if(subType === 'modal') {
+                title.innerText = "Input Modal Awal (DOC)";
+                fields.innerHTML = dateField + `
+                    <div><label class="block text-[10px] font-bold text-gray-400 mb-1">JUMLAH EKOR</label><input type="number" inputmode="numeric" name="populasi" required class="w-full border p-3 rounded-lg dark:bg-gray-700 outline-none" oninput="calcHppPreview()"></div>
+                    <div><label class="block text-[10px] font-bold text-gray-400 mb-1">TOTAL BIAYA (IDR)</label><input type="number" inputmode="numeric" name="biaya" required class="w-full border p-3 rounded-lg dark:bg-gray-700 outline-none" oninput="calcHppPreview()"></div>
+                `;
+                preview.classList.remove('hidden');
+            } else if(subType === 'operasional') {
+                title.innerText = "Input Biaya Operasional";
+                fields.innerHTML = dateField + `
+                    <div><label class="block text-[10px] font-bold text-gray-400 mb-1">KETERANGAN</label><input type="text" name="keterangan" required placeholder="Contoh: Pembelian Pakan" class="w-full border p-3 rounded-lg dark:bg-gray-700 outline-none"></div>
+                    <div><label class="block text-[10px] font-bold text-gray-400 mb-1">NOMINAL (IDR)</label><input type="number" inputmode="numeric" name="biaya" required class="w-full border p-3 rounded-lg dark:bg-gray-700 outline-none" oninput="calcHppPreview()"></div>
+                `;
+                preview.classList.remove('hidden');
+            } else if(subType === 'kematian') {
+                title.innerText = "Laporan Kematian Harian";
+                fields.innerHTML = dateField + `
+                    <div><label class="block text-[10px] font-bold text-gray-400 mb-1">JUMLAH MATI (EKOR)</label><input type="number" inputmode="numeric" name="mati" required class="w-full border p-3 rounded-lg dark:bg-gray-700 outline-none"></div>
+                `;
+            } else if(subType === 'panen') {
+                title.innerText = "Laporan Panen/Penjualan";
+                fields.innerHTML = dateField + `
+                    <div><label class="block text-[10px] font-bold text-gray-400 mb-1">JUMLAH TERJUAL (EKOR)</label><input type="number" inputmode="numeric" name="populasi_minus" required class="w-full border p-3 rounded-lg dark:bg-gray-700 outline-none"></div>
+                    <div><label class="block text-[10px] font-bold text-gray-400 mb-1">TOTAL PENDAPATAN (IDR)</label><input type="number" inputmode="numeric" name="pendapatan" required class="w-full border p-3 rounded-lg dark:bg-gray-700 outline-none"></div>
+                `;
+            }
+
+            document.getElementById('appModal').classList.remove('hidden');
+        }
+
+        function calcHppPreview() {
+            const formData = new FormData(document.getElementById('appForm'));
+            const costIn = Number(formData.get('biaya')) || 0;
+            const popIn = Number(formData.get('populasi')) || 0;
+            const totalC = broilerSummary.totalCost + costIn;
+            const totalP = broilerSummary.currentPop + popIn;
+            const hpp = totalP > 0 ? totalC / totalP : 0;
+            document.getElementById('hppValue').innerText = "Rp " + Math.round(hpp).toLocaleString();
+        }
+
+        // ================= PETELUR FUNCTIONS =================
+        async function refreshPetelurDashboard() {
+            try {
+                const resRaw = await api.run('getDashboardDataExtended', [currentUser.id, currentUser.role]);
+                const res = JSON.parse(resRaw);
+                const pData = res && res.petelur ? res.petelur : { populasi: 0, cost: 0, produksi: 0 };
+
+                document.getElementById('dash-p-pop').innerText = (pData.populasi || 0).toLocaleString() + " Ekor";
+                document.getElementById('dash-p-cost').innerText = "Rp " + (pData.cost || 0).toLocaleString();
+                document.getElementById('dash-p-prod').innerText = (pData.produksi || 0).toLocaleString() + " Butir";
+                
+                petelurSummary.currentPop = pData.populasi || 0;
+                petelurSummary.totalCost = pData.cost || 0;
+            } catch(e) { console.error("Dash Error:", e); }
+        }
+
+        async function renderPetelurData() {
+            showLoader();
+            try {
+                const raw = await api.run('getPetelurExtended', [currentUser.id, currentUser.role]);
+                const data = JSON.parse(raw);
+                const body = document.getElementById('petelurTableBody');
+                
+                if(!data || data.length === 0) {
+                    body.innerHTML = '<tr><td colspan="8" class="p-8 text-center text-gray-400 italic font-light">Belum ada transaksi tercatat</td></tr>';
+                } else {
+                    const displayData = data.slice(0, 50); // LIMIT 50 ROW
+                    body.innerHTML = displayData.map(row => {
+                        const costValue = Number(row.biaya) || 0;
+                        return `
+                            <tr class="hover:bg-gray-50 dark:hover:bg-gray-800 transition">
+                                <td class="p-3 md:p-4 font-mono text-xs opacity-70">${row.tanggal}</td>
+                                <td class="p-3 md:p-4"><span class="px-2 md:px-3 py-1 rounded-full text-[9px] font-black tracking-tighter ${getBadgeColor(row.jenis)}">${row.jenis}</span></td>
+                                <td class="p-3 md:p-4 font-semibold">${row.populasi || '-'}</td>
+                                <td class="p-3 md:p-4 text-orange-500 font-bold">${row.produksi || '-'}</td>
+                                <td class="p-3 md:p-4 text-red-500 font-bold">${row.mati || '-'}</td>
+                                <td class="p-3 md:p-4 text-gray-600 dark:text-gray-300">Rp ${(costValue).toLocaleString()}</td>
+                                <td class="p-3 md:p-4 italic text-[10px] text-gray-400 truncate max-w-[100px] md:max-w-[150px]">${row.keterangan || '-'}</td>
+                                <td class="p-3 md:p-4 text-center">
+                                    <button onclick="deleteData('petelur','${row.id}')" class="text-gray-300 hover:text-red-500 p-2"><i class="fas fa-trash-alt"></i></button>
+                                </td>
+                            </tr>
+                        `;
+                    }).join('');
+                }
+            } catch(e) { console.error("Table Error:", e); }
+            hideLoader();
+        }
+
+        function openPetelurModal(subType) {
+            const fields = document.getElementById('dynamicFields');
+            const title = document.getElementById('modalTitle');
+            const preview = document.getElementById('hppPreview');
+            document.getElementById('formType').value = subType;
+            fields.innerHTML = '';
+            preview.classList.add('hidden');
+
+            const dateField = `<div><label class="block text-[10px] font-bold text-gray-400 mb-1">TANGGAL TRANSAKSI</label><input type="date" name="tanggal" required class="w-full border p-3 rounded-lg dark:bg-gray-700 outline-none focus:ring-1 focus:ring-metallic-500" value="${new Date().toISOString().split('T')[0]}"></div>`;
+
+            if(subType === 'modal') {
+                title.innerText = "Input Modal Awal (Pullet)";
+                fields.innerHTML = dateField + `
+                    <div><label class="block text-[10px] font-bold text-gray-400 mb-1">JUMLAH EKOR</label><input type="number" inputmode="numeric" name="populasi" required class="w-full border p-3 rounded-lg dark:bg-gray-700 outline-none"></div>
+                    <div><label class="block text-[10px] font-bold text-gray-400 mb-1">TOTAL BIAYA (IDR)</label><input type="number" inputmode="numeric" name="biaya" required class="w-full border p-3 rounded-lg dark:bg-gray-700 outline-none"></div>
+                `;
+            } else if(subType === 'operasional') {
+                title.innerText = "Input Biaya Pakan";
+                fields.innerHTML = dateField + `
+                    <div><label class="block text-[10px] font-bold text-gray-400 mb-1">KETERANGAN</label><input type="text" name="keterangan" required placeholder="Contoh: Pakan Layer 50kg" class="w-full border p-3 rounded-lg dark:bg-gray-700 outline-none"></div>
+                    <div><label class="block text-[10px] font-bold text-gray-400 mb-1">NOMINAL (IDR)</label><input type="number" inputmode="numeric" name="biaya" required class="w-full border p-3 rounded-lg dark:bg-gray-700 outline-none"></div>
+                `;
+            } else if(subType === 'kematian') {
+                title.innerText = "Laporan Afkir / Kematian";
+                fields.innerHTML = dateField + `
+                    <div><label class="block text-[10px] font-bold text-gray-400 mb-1">JUMLAH MATI/AFKIR</label><input type="number" inputmode="numeric" name="mati" required class="w-full border p-3 rounded-lg dark:bg-gray-700 outline-none"></div>
+                `;
+            } else if(subType === 'produksi') {
+                title.innerText = "Laporan Panen Telur";
+                fields.innerHTML = dateField + `
+                    <div><label class="block text-[10px] font-bold text-gray-400 mb-1">JUMLAH PRODUKSI (BUTIR)</label><input type="number" inputmode="numeric" name="produksi" required class="w-full border p-3 rounded-lg dark:bg-gray-700 outline-none"></div>
+                    <div><label class="block text-[10px] font-bold text-gray-400 mb-1">PENDAPATAN (IDR)</label><input type="number" inputmode="numeric" name="pendapatan" required class="w-full border p-3 rounded-lg dark:bg-gray-700 outline-none"></div>
+                `;
+            }
+
+            document.getElementById('appModal').classList.remove('hidden');
+        }
+
+        // ================= KAMPUNG FUNCTIONS =================
+        async function refreshKampungDashboard() {
+            try {
+                const resRaw = await api.run('getDashboardDataExtended', [currentUser.id, currentUser.role]);
+                const res = JSON.parse(resRaw);
+                const kData = res && res.kampung ? res.kampung : { populasi: 0, cost: 0, hpp: 0 };
+
+                document.getElementById('dash-k-pop').innerText = (kData.populasi || 0).toLocaleString() + " Ekor";
+                document.getElementById('dash-k-cost').innerText = "Rp " + (kData.cost || 0).toLocaleString();
+                document.getElementById('dash-k-hpp').innerText = "Rp " + (kData.hpp || 0).toLocaleString();
+                
+                kampungSummary.currentPop = kData.populasi || 0;
+                kampungSummary.totalCost = kData.cost || 0;
+            } catch(e) { console.error("Dash Error:", e); }
+        }
+
+        async function renderKampungData() {
+            showLoader();
+            try {
+                const raw = await api.run('getKampungExtended', [currentUser.id, currentUser.role]);
+                const data = JSON.parse(raw);
+                const body = document.getElementById('kampungTableBody');
+                
+                if(!data || data.length === 0) {
+                    body.innerHTML = '<tr><td colspan="8" class="p-8 text-center text-gray-400 italic font-light">Belum ada transaksi tercatat</td></tr>';
+                } else {
+                    const displayData = data.slice(0, 50); // LIMIT 50 ROW
+                    body.innerHTML = displayData.map(row => {
+                        const costValue = Number(row.biaya) || 0;
+                        return `
+                            <tr class="hover:bg-gray-50 dark:hover:bg-gray-800 transition">
+                                <td class="p-3 md:p-4 font-mono text-xs opacity-70">${row.tanggal}</td>
+                                <td class="p-3 md:p-4"><span class="px-2 md:px-3 py-1 rounded-full text-[9px] font-black tracking-tighter ${getBadgeColor(row.jenis)}">${row.jenis}</span></td>
+                                <td class="p-3 md:p-4 font-semibold">${row.populasi || '-'}</td>
+                                <td class="p-3 md:p-4 text-red-500 font-bold">${row.mati || '-'}</td>
+                                <td class="p-3 md:p-4 text-gray-600 dark:text-gray-300">Rp ${(costValue).toLocaleString()}</td>
+                                <td class="p-3 md:p-4 font-black text-green-600">Rp ${(row.hpp_saat_ini || 0).toLocaleString()}</td>
+                                <td class="p-3 md:p-4 italic text-[10px] text-gray-400 truncate max-w-[100px] md:max-w-[150px]">${row.keterangan || '-'}</td>
+                                <td class="p-3 md:p-4 text-center">
+                                    <button onclick="deleteData('kampung','${row.id}')" class="text-gray-300 hover:text-red-500 p-2"><i class="fas fa-trash-alt"></i></button>
+                                </td>
+                            </tr>
+                        `;
+                    }).join('');
+                }
+            } catch(e) { console.error("Table Error:", e); }
+            hideLoader();
+        }
+
+        function openKampungModal(subType) {
+            const fields = document.getElementById('dynamicFields');
+            const title = document.getElementById('modalTitle');
+            const preview = document.getElementById('hppPreview');
+            document.getElementById('formType').value = subType;
+            fields.innerHTML = '';
+            preview.classList.add('hidden');
+
+            const dateField = `<div><label class="block text-[10px] font-bold text-gray-400 mb-1">TANGGAL TRANSAKSI</label><input type="date" name="tanggal" required class="w-full border p-3 rounded-lg dark:bg-gray-700 outline-none focus:ring-1 focus:ring-metallic-500" value="${new Date().toISOString().split('T')[0]}"></div>`;
+
+            if(subType === 'modal') {
+                title.innerText = "Input Modal Awal (DOC Kampung)";
+                fields.innerHTML = dateField + `
+                    <div><label class="block text-[10px] font-bold text-gray-400 mb-1">JUMLAH EKOR</label><input type="number" inputmode="numeric" name="populasi" required class="w-full border p-3 rounded-lg dark:bg-gray-700 outline-none" oninput="calcHppPreviewKampung()"></div>
+                    <div><label class="block text-[10px] font-bold text-gray-400 mb-1">TOTAL BIAYA (IDR)</label><input type="number" inputmode="numeric" name="biaya" required class="w-full border p-3 rounded-lg dark:bg-gray-700 outline-none" oninput="calcHppPreviewKampung()"></div>
+                `;
+                preview.classList.remove('hidden');
+            } else if(subType === 'operasional') {
+                title.innerText = "Input Biaya Operasional";
+                fields.innerHTML = dateField + `
+                    <div><label class="block text-[10px] font-bold text-gray-400 mb-1">KETERANGAN</label><input type="text" name="keterangan" required placeholder="Contoh: Pembelian Pakan" class="w-full border p-3 rounded-lg dark:bg-gray-700 outline-none"></div>
+                    <div><label class="block text-[10px] font-bold text-gray-400 mb-1">NOMINAL (IDR)</label><input type="number" inputmode="numeric" name="biaya" required class="w-full border p-3 rounded-lg dark:bg-gray-700 outline-none" oninput="calcHppPreviewKampung()"></div>
+                `;
+                preview.classList.remove('hidden');
+            } else if(subType === 'kematian') {
+                title.innerText = "Laporan Kematian Harian";
+                fields.innerHTML = dateField + `
+                    <div><label class="block text-[10px] font-bold text-gray-400 mb-1">JUMLAH MATI (EKOR)</label><input type="number" inputmode="numeric" name="mati" required class="w-full border p-3 rounded-lg dark:bg-gray-700 outline-none"></div>
+                `;
+            } else if(subType === 'panen') {
+                title.innerText = "Laporan Panen/Penjualan";
+                fields.innerHTML = dateField + `
+                    <div><label class="block text-[10px] font-bold text-gray-400 mb-1">JUMLAH TERJUAL (EKOR)</label><input type="number" inputmode="numeric" name="populasi_minus" required class="w-full border p-3 rounded-lg dark:bg-gray-700 outline-none"></div>
+                    <div><label class="block text-[10px] font-bold text-gray-400 mb-1">TOTAL PENDAPATAN (IDR)</label><input type="number" inputmode="numeric" name="pendapatan" required class="w-full border p-3 rounded-lg dark:bg-gray-700 outline-none"></div>
+                `;
+            }
+
+            document.getElementById('appModal').classList.remove('hidden');
+        }
+
+        function calcHppPreviewKampung() {
+            const formData = new FormData(document.getElementById('appForm'));
+            const costIn = Number(formData.get('biaya')) || 0;
+            const popIn = Number(formData.get('populasi')) || 0;
+            const totalC = kampungSummary.totalCost + costIn;
+            const totalP = kampungSummary.currentPop + popIn;
+            const hpp = totalP > 0 ? totalC / totalP : 0;
+            document.getElementById('hppValue').innerText = "Rp " + Math.round(hpp).toLocaleString();
+        }
+
+        async function handleFormSubmit(e) {
+            e.preventDefault();
+            const formData = new FormData(e.target);
+            const data = Object.fromEntries(formData.entries());
+            showLoader();
+            try {
+                if (activeModule === 'broiler') {
+                    await api.run('saveBroilerExtended', [data, currentUser.id]);
+                    refreshBroilerDashboard();
+                    renderBroilerData();
+                } else if (activeModule === 'petelur') {
+                    await api.run('savePetelurExtended', [data, currentUser.id]);
+                    refreshPetelurDashboard();
+                    renderPetelurData();
+                } else if (activeModule === 'kampung') {
+                    await api.run('saveKampungExtended', [data, currentUser.id]);
+                    refreshKampungDashboard();
+                    renderKampungData();
+                }
+                closeModal();
+                showToast("Data berhasil disimpan", "success");
+            } catch(e) { showToast("Gagal menyimpan data", "error"); }
+            hideLoader();
+        }
+
+        async function deleteData(mod, id) {
+            if(!confirm("Anda yakin ingin menghapus data ini secara permanen?")) return;
+            showLoader();
+            try {
+                await api.run('deleteModuleData', [mod, id, currentUser.id]);
+                if (mod === 'broiler') { refreshBroilerDashboard(); renderBroilerData(); }
+                if (mod === 'petelur') { refreshPetelurDashboard(); renderPetelurData(); }
+                if (mod === 'kampung') { refreshKampungDashboard(); renderKampungData(); }
+            } catch(e) { showToast("Gagal menghapus data", "error"); }
+            hideLoader();
+        }
+
+        function getBadgeColor(type) {
+            switch(type) {
+                case 'MODAL': return 'bg-blue-100 text-blue-700 border border-blue-200';
+                case 'OPERASIONAL': return 'bg-orange-100 text-orange-700 border border-orange-200';
+                case 'KEMATIAN': return 'bg-red-100 text-red-700 border border-red-200';
+                case 'PANEN': return 'bg-green-100 text-green-700 border border-green-200';
+                case 'PRODUKSI': return 'bg-green-100 text-green-700 border border-green-200';
+                default: return 'bg-gray-100 text-gray-700';
+            }
+        }
+
+        function closeModal() { document.getElementById('appModal').classList.add('hidden'); }
+        function showLoader() { document.getElementById('loader').classList.remove('hidden'); }
+        function hideLoader() { document.getElementById('loader').classList.add('hidden'); }
+        function toggleSidebar() { document.getElementById('sidebar').classList.toggle('-translate-x-full'); }
+        function toggleTheme() { document.documentElement.classList.toggle('dark'); }
+        function handleLogout() { location.reload(); }
+        function showToast(m, t) {
+            const toast = document.getElementById('toast');
+            const content = document.getElementById('toastContent');
+            content.className = t === 'error' ? 'bg-red-500 text-white px-6 py-3 rounded shadow-lg flex items-center gap-3' : 'bg-metallic-500 text-white px-6 py-3 rounded shadow-lg flex items-center gap-3';
+            document.getElementById('toastMsg').innerText = m;
+            toast.classList.remove('hidden');
+            setTimeout(() => toast.classList.add('hidden'), 3000);
+        }
+    </script>
+</body>
+</html>
