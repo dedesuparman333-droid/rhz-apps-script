@@ -14,7 +14,7 @@ const SPREADSHEET_ID = "1gvuG4TgIvnlrXdfp3pmFJgi1YjMQdGmSvMIk9Mpi3kM";
 function doPost(e) {
   const headers = {
     "Access-Control-Allow-Origin": "*",
-    "Access-Control-Allow-Methods": "POST",
+    "Access-Control-Allow-Methods": "POST, OPTIONS",
     "Access-Control-Allow-Headers": "Content-Type"
   };
 
@@ -54,6 +54,17 @@ function doPost(e) {
     return ContentService.createTextOutput(JSON.stringify({ success: false, message: err.toString() }))
       .setMimeType(ContentService.MimeType.JSON);
   }
+}
+
+/**
+ * Menangani permintaan OPTIONS (Pre-flight request) dari Vercel/Domain Luar
+ */
+function doOptions(e) {
+  return ContentService.createTextOutput("")
+    .setMimeType(ContentService.MimeType.TEXT)
+    .addHeader("Access-Control-Allow-Origin", "*")
+    .addHeader("Access-Control-Allow-Methods", "POST, OPTIONS")
+    .addHeader("Access-Control-Allow-Headers", "Content-Type");
 }
 
 // Fungsi wajib untuk menjalankan Web App secara internal (Preview Google)
