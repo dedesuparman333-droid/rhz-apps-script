@@ -7,11 +7,60 @@
  */
 const SPREADSHEET_ID = "1gvuG4TgIvnlrXdfp3pmFJgi1YjMQdGmSvMIk9Mpi3kM";
 
-// Fungsi wajib untuk menjalankan Web App
+/**
+ * PINTU MASUK API (Untuk Vercel / Domain Luar)
+ * Menangani permintaan POST dan mengizinkan CORS
+ */
+function doPost(e) {
+  const headers = {
+    "Access-Control-Allow-Origin": "*",
+    "Access-Control-Allow-Methods": "POST",
+    "Access-Control-Allow-Headers": "Content-Type"
+  };
+
+  try {
+    const requestData = JSON.parse(e.postData.contents);
+    const action = requestData.action;
+    const payload = requestData.payload;
+    const userId = requestData.userId;
+
+    let result;
+
+    // Routing berdasarkan 'action' yang dikirim dari Frontend
+    switch (action) {
+      case 'doLogin':
+        result = doLogin(payload.username, payload.password);
+        break;
+      case 'saveBroilerExtended':
+        result = saveBroilerExtended(payload.data, userId);
+        break;
+      case 'getBroilerExtended':
+        result = getBroilerExtended(userId, payload.role);
+        break;
+      case 'getDashboardDataExtended':
+        result = getDashboardDataExtended(userId, payload.role);
+        break;
+      case 'deleteModuleData':
+        result = deleteModuleData(payload.mod, payload.id);
+        break;
+      default:
+        result = JSON.stringify({ success: false, message: "Action tidak ditemukan" });
+    }
+
+    return ContentService.createTextOutput(result)
+      .setMimeType(ContentService.MimeType.JSON);
+
+  } catch (err) {
+    return ContentService.createTextOutput(JSON.stringify({ success: false, message: err.toString() }))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
+}
+
+// Fungsi wajib untuk menjalankan Web App secara internal (Preview Google)
 function doGet() {
   return HtmlService.createTemplateFromFile('index')
     .evaluate()
-    .setTitle('Smart Poultry Farm')
+    .setTitle('Rahaza Farm - Smart Poultry')
     .addMetaTag('viewport', 'width=device-width, initial-scale=1');
 }
 
@@ -30,7 +79,6 @@ function getSheet(name) {
       return sheet;
     }
     
-    // Perbaikan: Hanya appendRow jika headers tidak kosong
     if (headers.length > 0) {
       sheet.appendRow(headers);
     }
@@ -48,14 +96,10 @@ function doLogin(u, p) {
   return JSON.stringify({ success: false, message: "Akses Ditolak" });
 }
 
-/**
- * Fitur Spesifik Broiler: Menyimpan berbagai jenis input
- */
 function saveBroilerExtended(obj, userId) {
   const sheet = getSheet('broiler');
   const data = sheet.getDataRange().getValues();
   
-  // Hitung akumulasi saat ini untuk HPP
   let totalCost = 0;
   let totalPop = 0;
   
@@ -74,13 +118,12 @@ function saveBroilerExtended(obj, userId) {
     'panen': 'PANEN'
   };
 
-  const jenis = jenisMap[obj.type];
+  const jenis = jenisMap[obj.type] || obj.type;
   const biaya = Number(obj.biaya) || 0;
   const populasi = Number(obj.populasi) || 0;
   const mati = Number(obj.mati) || 0;
   const pop_minus = Number(obj.populasi_minus) || 0;
 
-  // Update akumulasi dengan input baru
   totalCost += biaya;
   totalPop += populasi;
   totalPop -= mati;
@@ -107,6 +150,8 @@ function saveBroilerExtended(obj, userId) {
 
 function getBroilerExtended(userId, role) {
   const data = getSheet('broiler').getDataRange().getValues();
+  if (data.length <= 1) return JSON.stringify([]);
+  
   const headers = data[0];
   const res = [];
   for(let i=1; i<data.length; i++) {
@@ -120,7 +165,8 @@ function getBroilerExtended(userId, role) {
       res.push(row);
     }
   }
-  return JSON.stringify(res);
+  // Balik data agar yang terbaru di atas
+  return JSON.stringify(res.reverse());
 }
 
 function getDashboardDataExtended(userId, role) {
@@ -133,7 +179,7 @@ function getDashboardDataExtended(userId, role) {
         cost += (Number(data[i][7]) || 0);
         pop += (Number(data[i][5]) || 0);
         pop -= (Number(data[i][6]) || 0);
-        hpp = data[i][9]; // Ambil HPP baris terakhir yang diproses
+        hpp = data[i][9]; 
       }
     }
   }
