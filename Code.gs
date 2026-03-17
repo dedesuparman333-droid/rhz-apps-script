@@ -37,6 +37,18 @@ function doPost(e) {
       case 'getBroilerExtended':
         result = getBroilerExtended(userId, payload.role);
         break;
+      case 'saveKampungExtended':
+        result = saveKampungExtended(payload.data, userId);
+        break;
+      case 'getKampungExtended':
+        result = getKampungExtended(userId, payload.role);
+        break;
+      case 'savePetelurExtended':
+        result = savePetelurExtended(payload.data, userId);
+        break;
+      case 'getPetelurExtended':
+        result = getPetelurExtended(userId, payload.role);
+        break;
       case 'getDashboardDataExtended':
         result = getDashboardDataExtended(userId, payload.role);
         break;
@@ -67,7 +79,6 @@ function doOptions(e) {
     .addHeader("Access-Control-Allow-Headers", "Content-Type");
 }
 
-// Fungsi wajib untuk menjalankan Web App secara internal (Preview Google)
 function doGet() {
   return HtmlService.createTemplateFromFile('index')
     .evaluate()
@@ -81,7 +92,7 @@ function getSheet(name) {
   if (!sheet) {
     sheet = ss.insertSheet(name);
     let headers = [];
-    if (name === 'broiler') {
+    if (name === 'broiler' || name === 'kampung' || name === 'petelur') {
       headers = ['ID', 'Waktu', 'UserID', 'Tanggal', 'Jenis', 'Populasi', 'Mati', 'Biaya', 'Pendapatan', 'HPP_Saat_Ini', 'Keterangan'];
     } else if (name === 'users') {
       headers = ['ID', 'Waktu', 'Username', 'Password', 'Role'];
@@ -107,8 +118,9 @@ function doLogin(u, p) {
   return JSON.stringify({ success: false, message: "Akses Ditolak" });
 }
 
-function saveBroilerExtended(obj, userId) {
-  const sheet = getSheet('broiler');
+// FUNGSI GENERIK UNTUK SIMPAN DATA (Broiler, Kampung, Petelur)
+function saveDataGeneric(sheetName, obj, userId) {
+  const sheet = getSheet(sheetName);
   const data = sheet.getDataRange().getValues();
   
   let totalCost = 0;
@@ -143,7 +155,7 @@ function saveBroilerExtended(obj, userId) {
   const hpp = totalPop > 0 ? totalCost / totalPop : 0;
 
   sheet.appendRow([
-    'BR-' + Utilities.getUuid(),
+    sheetName.toUpperCase().substring(0,2) + '-' + Utilities.getUuid(),
     new Date(),
     userId,
     obj.tanggal,
@@ -153,14 +165,19 @@ function saveBroilerExtended(obj, userId) {
     biaya || '',
     obj.pendapatan || '',
     Math.round(hpp),
-    obj.keterangan || (jenis === 'MODAL' ? 'Pemasukan DOC' : '')
+    obj.keterangan || ''
   ]);
   
   return JSON.stringify({ success: true });
 }
 
-function getBroilerExtended(userId, role) {
-  const data = getSheet('broiler').getDataRange().getValues();
+// Wrapper Functions
+function saveBroilerExtended(obj, userId) { return saveDataGeneric('broiler', obj, userId); }
+function saveKampungExtended(obj, userId) { return saveDataGeneric('kampung', obj, userId); }
+function savePetelurExtended(obj, userId) { return saveDataGeneric('petelur', obj, userId); }
+
+function getDataGeneric(sheetName, userId, role) {
+  const data = getSheet(sheetName).getDataRange().getValues();
   if (data.length <= 1) return JSON.stringify([]);
   
   const headers = data[0];
@@ -176,28 +193,35 @@ function getBroilerExtended(userId, role) {
       res.push(row);
     }
   }
-  // Balik data agar yang terbaru di atas
   return JSON.stringify(res.reverse());
 }
 
+function getBroilerExtended(userId, role) { return getDataGeneric('broiler', userId, role); }
+function getKampungExtended(userId, role) { return getDataGeneric('kampung', userId, role); }
+function getPetelurExtended(userId, role) { return getDataGeneric('petelur', userId, role); }
+
 function getDashboardDataExtended(userId, role) {
-  const data = getSheet('broiler').getDataRange().getValues();
-  let pop = 0, cost = 0, hpp = 0;
-  
-  if (data.length > 1) {
-    for(let i=1; i<data.length; i++) {
-      if(role === 'admin' || data[i][2] === userId) {
-        cost += (Number(data[i][7]) || 0);
-        pop += (Number(data[i][5]) || 0);
-        pop -= (Number(data[i][6]) || 0);
-        hpp = data[i][9]; 
+  const modules = ['broiler', 'kampung', 'petelur'];
+  const result = {};
+
+  modules.forEach(mod => {
+    const data = getSheet(mod).getDataRange().getValues();
+    let pop = 0, cost = 0, hpp = 0;
+    
+    if (data.length > 1) {
+      for(let i=1; i<data.length; i++) {
+        if(role === 'admin' || data[i][2] === userId) {
+          cost += (Number(data[i][7]) || 0);
+          pop += (Number(data[i][5]) || 0);
+          pop -= (Number(data[i][6]) || 0);
+          hpp = data[i][9]; 
+        }
       }
     }
-  }
-  
-  return JSON.stringify({
-    broiler: { populasi: pop, cost: cost, hpp: hpp }
+    result[mod] = { populasi: pop, cost: cost, hpp: hpp };
   });
+  
+  return JSON.stringify(result);
 }
 
 function deleteModuleData(mod, id) {

@@ -97,6 +97,8 @@
                     <li><a href="#" onclick="navigate('beranda')" class="nav-btn block px-4 py-3 rounded-lg hover:bg-metallic-700 transition" data-target="beranda"><i class="fas fa-home w-6"></i> Beranda</a></li>
                     <li class="pt-4 pb-2 px-4 text-xs font-semibold text-metallic-300 uppercase tracking-wider">Produksi</li>
                     <li><a href="#" onclick="navigate('broiler')" class="nav-btn block px-4 py-3 rounded-lg hover:bg-metallic-700 transition" data-target="broiler"><i class="fas fa-drumstick-bite w-6"></i> Broiler</a></li>
+                    <li><a href="#" onclick="navigate('kampung')" class="nav-btn block px-4 py-3 rounded-lg hover:bg-metallic-700 transition" data-target="kampung"><i class="fas fa-feather w-6"></i> Kampung</a></li>
+                    <li><a href="#" onclick="navigate('petelur')" class="nav-btn block px-4 py-3 rounded-lg hover:bg-metallic-700 transition" data-target="petelur"><i class="fas fa-egg w-6"></i> Petelur</a></li>
                 </ul>
             </nav>
             <div class="p-4 border-t border-metallic-700 text-xs">
@@ -125,29 +127,29 @@
                     </div>
                 </div>
 
-                <!-- BROILER PAGE -->
-                <div id="page-broiler" class="page-content hidden space-y-6">
+                <!-- GENERIC PRODUCTION PAGE (Used for Broiler, Kampung, Petelur) -->
+                <div id="page-production" class="page-content hidden space-y-6">
                     <div class="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6">
                         <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-5 border-l-4 border-blue-500">
                             <p class="text-[10px] text-gray-500 font-bold uppercase tracking-wider">Populasi Aktif</p>
-                            <h3 class="text-2xl font-black mt-1" id="dash-b-pop">0 Ekor</h3>
+                            <h3 class="text-2xl font-black mt-1" id="dash-pop">0 Ekor</h3>
                         </div>
                         <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-5 border-l-4 border-red-500">
                             <p class="text-[10px] text-gray-500 font-bold uppercase tracking-wider">Total Biaya</p>
-                            <h3 class="text-2xl font-black mt-1 text-red-500" id="dash-b-cost">Rp 0</h3>
+                            <h3 class="text-2xl font-black mt-1 text-red-500" id="dash-cost">Rp 0</h3>
                         </div>
                         <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-5 border-l-4 border-green-500">
                             <p class="text-[10px] text-gray-500 font-bold uppercase tracking-wider">HPP / Ekor</p>
-                            <h3 class="text-2xl font-black mt-1 text-green-500" id="dash-b-hpp">Rp 0</h3>
+                            <h3 class="text-2xl font-black mt-1 text-green-500" id="dash-hpp">Rp 0</h3>
                         </div>
                     </div>
 
                     <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
-                        <button onclick="openBroilerModal('modal')" class="bg-blue-600 text-white p-4 rounded-xl shadow hover:bg-blue-700 flex flex-col items-center gap-2">
+                        <button onclick="openInputModal('modal')" class="bg-blue-600 text-white p-4 rounded-xl shadow hover:bg-blue-700 flex flex-col items-center gap-2">
                             <i class="fas fa-plus-circle text-xl"></i>
                             <span class="text-[10px] font-bold uppercase">DOC Masuk</span>
                         </button>
-                        <button onclick="openBroilerModal('operasional')" class="bg-orange-500 text-white p-4 rounded-xl shadow hover:bg-orange-600 flex flex-col items-center gap-2">
+                        <button onclick="openInputModal('operasional')" class="bg-orange-500 text-white p-4 rounded-xl shadow hover:bg-orange-600 flex flex-col items-center gap-2">
                             <i class="fas fa-coins text-xl"></i>
                             <span class="text-[10px] font-bold uppercase">Input Biaya</span>
                         </button>
@@ -155,7 +157,7 @@
 
                     <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm overflow-hidden border border-gray-100 dark:border-gray-700">
                         <div class="p-4 border-b dark:border-gray-700 bg-gray-50 dark:bg-gray-900">
-                            <h3 class="font-bold text-gray-600 dark:text-gray-300 uppercase text-xs tracking-widest">Riwayat Transaksi</h3>
+                            <h3 class="font-bold text-gray-600 dark:text-gray-300 uppercase text-xs tracking-widest" id="tableTitle">Riwayat Transaksi</h3>
                         </div>
                         <div class="overflow-x-auto smooth-scroll-container">
                             <table class="w-full text-left whitespace-nowrap">
@@ -170,7 +172,7 @@
                                         <th class="p-4 text-center">Aksi</th>
                                     </tr>
                                 </thead>
-                                <tbody id="broilerTableBody" class="divide-y dark:divide-gray-700 text-sm"></tbody>
+                                <tbody id="productionTableBody" class="divide-y dark:divide-gray-700 text-sm"></tbody>
                             </table>
                         </div>
                     </div>
@@ -201,8 +203,8 @@
 
     <script>
         // ================= CONFIGURATION =================
-        // PASTIIN URL INI ADALAH URL WEB APP GAS HASIL DEPLOY TERBARU
-        const GAS_API_URL = "https://script.google.com/macros/s/AKfycbyfg-DQ_mceJV-1JLXqSxzldfSQn-3K6hjy1_RreW6-xv3tX6WiTe6UY-V4VsryYIFJ/exec"; 
+        // GANTI DENGAN URL WEB APP GAS HASIL DEPLOY TERBARU
+        const GAS_API_URL = "URL_WEB_APP_BARU_ANDA_DISINI"; 
 
         let currentUser = JSON.parse(localStorage.getItem('rahaza_user')) || null;
         let activeModule = 'beranda';
@@ -212,6 +214,11 @@
             run: async (action, payload = {}) => {
                 showLoader();
                 try {
+                    // Validasi URL agar tidak error fetch
+                    if (GAS_API_URL.includes("https://script.google.com/macros/s/AKfycbyfg-DQ_mceJV-1JLXqSxzldfSQn-3K6hjy1_RreW6-xv3tX6WiTe6UY-V4VsryYIFJ/exec")) {
+                        throw new Error("API URL belum diatur. Silakan masukkan URL Apps Script yang valid.");
+                    }
+
                     const response = await fetch(GAS_API_URL, {
                         method: "POST",
                         body: JSON.stringify({
@@ -221,12 +228,10 @@
                         })
                     });
                     const res = await response.json();
-                    
-                    // GAS mengembalikan string JSON dalam responnya berdasarkan kode kita
                     return typeof res === 'string' ? JSON.parse(res) : res;
                 } catch (err) {
                     console.error("Fetch Error:", err);
-                    showToast("Gagal terhubung ke Server Cloud", "error");
+                    showToast(err.message || "Gagal terhubung ke Server Cloud", "error");
                     throw err;
                 } finally {
                     hideLoader();
@@ -263,46 +268,58 @@
 
         function navigate(page) {
             activeModule = page;
-            document.querySelectorAll('.page-content').forEach(p => p.classList.add('hidden'));
-            document.getElementById('pageTitle').innerText = page.charAt(0).toUpperCase() + page.slice(1);
-            document.getElementById(`page-${page}`).classList.remove('hidden');
+            const contentPages = ['beranda', 'production'];
             
-            if(page === 'broiler') {
-                refreshBroilerData();
+            document.querySelectorAll('.page-content').forEach(p => p.classList.add('hidden'));
+            
+            if (page === 'beranda') {
+                document.getElementById('pageTitle').innerText = "Beranda";
+                document.getElementById('page-beranda').classList.remove('hidden');
+            } else {
+                // Untuk broiler, kampung, petelur
+                document.getElementById('pageTitle').innerText = page.charAt(0).toUpperCase() + page.slice(1);
+                document.getElementById('page-production').classList.remove('hidden');
+                document.getElementById('tableTitle').innerText = `Riwayat Transaksi ${page.charAt(0).toUpperCase() + page.slice(1)}`;
+                refreshProductionData(page);
             }
+
             if(window.innerWidth < 768 && !document.getElementById('sidebar').classList.contains('-translate-x-full')) {
                 toggleSidebar();
             }
         }
 
-        async function refreshBroilerData() {
+        async function refreshProductionData(mod) {
+            const actionGet = `get${mod.charAt(0).toUpperCase() + mod.slice(1)}Extended`;
             try {
-                const dash = await api.run('getDashboardDataExtended', { role: currentUser.role });
-                if(dash && dash.broiler) {
-                    document.getElementById('dash-b-pop').innerText = dash.broiler.populasi.toLocaleString() + " Ekor";
-                    document.getElementById('dash-b-cost').innerText = "Rp " + dash.broiler.cost.toLocaleString();
-                    document.getElementById('dash-b-hpp').innerText = "Rp " + (dash.broiler.hpp || 0).toLocaleString();
+                // Get Dashboard
+                const dashAll = await api.run('getDashboardDataExtended', { role: currentUser.role });
+                const dash = dashAll[mod];
+                if(dash) {
+                    document.getElementById('dash-pop').innerText = dash.populasi.toLocaleString() + " Ekor";
+                    document.getElementById('dash-cost').innerText = "Rp " + dash.cost.toLocaleString();
+                    document.getElementById('dash-hpp').innerText = "Rp " + (dash.hpp || 0).toLocaleString();
                 }
 
-                const list = await api.run('getBroilerExtended', { role: currentUser.role });
-                const body = document.getElementById('broilerTableBody');
+                // Get Table List
+                const list = await api.run(actionGet, { role: currentUser.role });
+                const body = document.getElementById('productionTableBody');
                 body.innerHTML = list.length ? list.map(row => `
                     <tr class="hover:bg-gray-50 dark:hover:bg-gray-800">
                         <td class="p-4 font-mono text-xs">${row.tanggal}</td>
-                        <td class="p-4"><span class="px-2 py-1 rounded-full text-[9px] font-bold bg-blue-100 text-blue-700">${row.jenis}</span></td>
+                        <td class="p-4"><span class="px-2 py-1 rounded-full text-[9px] font-bold bg-metallic-100 text-metallic-700">${row.jenis}</span></td>
                         <td class="p-4">${row.populasi || 0}</td>
                         <td class="p-4">Rp ${(row.biaya || 0).toLocaleString()}</td>
                         <td class="p-4 font-bold text-green-600">Rp ${(row.hpp_saat_ini || 0).toLocaleString()}</td>
                         <td class="p-4 italic text-xs text-gray-400">${row.keterangan || '-'}</td>
                         <td class="p-4 text-center">
-                            <button onclick="deleteData('broiler','${row.id}')" class="text-gray-300 hover:text-red-500"><i class="fas fa-trash"></i></button>
+                            <button onclick="deleteData('${mod}','${row.id}')" class="text-gray-300 hover:text-red-500"><i class="fas fa-trash"></i></button>
                         </td>
                     </tr>
                 `).join('') : '<tr><td colspan="7" class="p-8 text-center text-gray-400">Tidak ada data</td></tr>';
             } catch(e) {}
         }
 
-        function openBroilerModal(sub) {
+        function openInputModal(sub) {
             const fields = document.getElementById('dynamicFields');
             document.getElementById('formType').value = sub;
             document.getElementById('modalTitle').innerText = sub === 'modal' ? 'Input DOC Masuk' : 'Input Biaya';
@@ -320,12 +337,14 @@
             e.preventDefault();
             const formData = new FormData(e.target);
             const data = Object.fromEntries(formData.entries());
+            const actionSave = `save${activeModule.charAt(0).toUpperCase() + activeModule.slice(1)}Extended`;
+            
             try {
-                const res = await api.run('saveBroilerExtended', { data });
+                const res = await api.run(actionSave, { data });
                 if(res.success) {
                     showToast("Data Tersimpan", "success");
                     closeModal();
-                    refreshBroilerData();
+                    refreshProductionData(activeModule);
                 }
             } catch(e) {}
         }
@@ -334,7 +353,7 @@
             if(!confirm("Hapus data ini?")) return;
             try {
                 const res = await api.run('deleteModuleData', { mod, id });
-                if(res.success) refreshBroilerData();
+                if(res.success) refreshProductionData(activeModule);
             } catch(e) {}
         }
 
@@ -347,7 +366,12 @@
         function handleLogout() { localStorage.removeItem('rahaza_user'); location.reload(); }
         function showToast(m, t) {
             const toast = document.getElementById('toast');
+            const content = document.getElementById('toastContent');
             document.getElementById('toastMsg').innerText = m;
+            
+            if (t === 'error') content.classList.replace('bg-metallic-500', 'bg-red-500');
+            else content.classList.replace('bg-red-500', 'bg-metallic-500');
+
             toast.classList.remove('hidden');
             setTimeout(() => toast.classList.add('hidden'), 3000);
         }
